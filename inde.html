@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Analytics - Project 2025</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- MATHJAX CONFIGURATION & SCRIPT -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        /* CORE RESET & LAYOUT */
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Montserrat', sans-serif;
+            color: #FFFFFF;
+            height: 100vh;
+            overflow: hidden;
+            display: block; 
+            position: relative;
+        }
+
+        /* --- LAYOUT GRID --- */
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr; /* Sidebar | Main */
+            height: 100vh;
+            overflow: hidden;
+            padding-bottom: 90px; /* Default space for footer */
+            transition: padding-bottom 0.5s ease; 
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            background-color: #000000;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            width: 280px;
+            border-right: 1px solid #282828;
+            height: 100%; 
+            overflow: hidden; 
+        }
+
+        /* Heroic Flash Animation */
+        @keyframes heroic-flash {
+            0% { text-shadow: 0 0 0 rgba(29, 185, 84, 0); transform: scale(1); }
+            50% { text-shadow: 0 0 20px rgba(29, 185, 84, 0.8), 0 0 40px rgba(29, 185, 84, 0.4); color: #ffffff; transform: scale(1.02); }
+            100% { text-shadow: 0 0 0 rgba(29, 185, 84, 0); transform: scale(1); }
+        }
+
+        /* Float Animation */
+        @keyframes float-logo {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            cursor: pointer;
+            flex-shrink: 0;
+            letter-spacing: -0.5px;
+            animation: heroic-flash 3s infinite ease-in-out;
+        }
+        
+        .nav-links { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 16px; 
+            flex-shrink: 0; 
+        }
+        
+        .nav-item {
+            display: flex; align-items: center; gap: 16px;
+            color: #B3B3B3; font-weight: 700; font-size: 14px;
+            cursor: pointer; transition: color 0.2s;
+        }
+        .nav-item:hover, .nav-item.active { color: #FFFFFF; }
+
+        /* Search Input Styles */
+        #search-wrapper {
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: 0;
+        }
+        #search-wrapper.visible {
+            max-height: 50px;
+            opacity: 1;
+            margin-bottom: 10px;
+        }
+
+        .library-section {
+            border-top: 1px solid #282828;
+            padding-top: 16px;
+            padding-bottom: 20px;
+            flex-grow: 1; 
+            height: 0;     
+            min-height: 0; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px;
+            overflow-y: auto; 
+        }
+
+        .library-section::-webkit-scrollbar { width: 8px; }
+        .library-section::-webkit-scrollbar-track { background: transparent; }
+        .library-section::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 4px; }
+        .library-section::-webkit-scrollbar-thumb:hover { background: #888; }
+
+        .lib-header {
+            display: flex; justify-content: space-between;
+            color: #B3B3B3; font-weight: 700; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            margin-bottom: 8px;
+            flex-shrink: 0; 
+        }
+
+        .playlist-item {
+            font-size: 14px; color: #B3B3B3; padding: 8px 0;
+            cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: flex; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .playlist-item:hover { color: #fff; }
+        .playlist-item.active { color: #1DB954; }
+        .playing-icon { display: none; font-size: 10px; }
+        .playlist-item.active .playing-icon { display: block; }
+
+        /* --- MAIN VIEW --- */
+        .main-view {
+            background: linear-gradient(180deg, #2a2a2a 0%, #121212 100%);
+            margin: 8px 8px 0 0;
+            border-radius: 8px;
+            position: relative;
+            overflow-y: auto;
+            display: flex; flex-direction: column;
+            padding-bottom: 32px;
+            cursor: pointer; /* Click to change slide */
+        }
+
+        .top-bar {
+            height: 64px; width: 100%; position: sticky; top: 0; z-index: 20;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 24px; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            cursor: default;
+        }
+        .nav-arrows { display: flex; gap: 16px; }
+        .arrow-circle {
+            width: 32px; height: 32px; background-color: rgba(0,0,0,0.7);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #fff; cursor: pointer;
+        }
+        .user-pill {
+            background-color: rgba(0,0,0,0.7); padding: 2px 12px 2px 2px;
+            border-radius: 23px; display: flex; align-items: center; gap: 8px;
+            font-weight: 700; font-size: 12px;
+        }
+
+        /* --- SLIDES CONTENT --- */
+        .slide { display: none; padding: 24px 32px 100px 32px; animation: fadeIn 0.5s ease; position: relative; }
+        .slide.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Hero Headers */
+        .hero-layout { 
+            display: flex; 
+            align-items: center; 
+            gap: 40px; 
+            padding: 40px 0 24px 0; 
+            position: relative; 
+            z-index: 10; 
+        }
+        .hero-img {
+            width: 220px; height: 220px; 
+            background: transparent;
+            box-shadow: none;
+            object-fit: cover; 
+            display: grid; place-items: center; 
+            border-radius: 12px;
+        }
+        .hero-text .kicker { font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+        .hero-text h1 { font-size: 48px; font-weight: 900; margin: 0; line-height: 1.1; letter-spacing: -2px; }
+        .hero-text .meta { margin-top: 16px; font-size: 14px; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 6px; }
+
+        /* Custom Hero Play Button Animation */
+        .hero-play-btn {
+            width: 56px; height: 56px; background: #1DB954; border-radius: 50%;
+            display: grid; place-items: center; color: #000; font-size: 24px; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .hero-play-btn:hover { transform: scale(1.05); box-shadow: 0 6px 14px rgba(0,0,0,0.4); }
+        .hero-play-btn:active { transform: scale(0.90) translateY(2px) !important; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* --- CONTENT CARD LAYOUT --- */
+        .two-col { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 24px; 
+            margin-top: 24px; 
+            position: relative; 
+            z-index: 10; 
+        }
+        
+        @media (min-width: 1024px) {
+            .two-col { 
+                flex-direction: row; 
+            }
+            .two-col > * { 
+                flex: 1; 
+                min-width: 0;
+            }
+        }
+
+        .card { background-color: rgba(255,255,255,0.05); padding: 24px; border-radius: 8px; transition: background 0.3s; }
+        .card:hover { background-color: rgba(255,255,255,0.1); }
+        
+        .code-block {
+            font-family: 'Courier New', monospace; background: #1e1e1e; padding: 16px;
+            border-radius: 8px; font-size: 13px; color: #d4d4d4; border-left: 4px solid #1DB954;
+            overflow-x: auto;
+            white-space: pre; 
+        }
+        .keyword { color: #569cd6; } .string { color: #ce9178; } .comment { color: #6a9955; }
+
+        /* --- FLIP CARD STYLES --- */
+        .flip-card {
+            background-color: transparent;
+            perspective: 1000px;
+            height: 200px;
+            cursor: pointer;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            border-radius: 8px;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .flip-card-front {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .flip-card-front:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .flip-card-back {
+            background: linear-gradient(145deg, #1DB954, #1ed760);
+            color: #000;
+            transform: rotateY(180deg);
+            border: 1px solid #1DB954;
+        }
+
+        /* --- HEATMAP STYLES --- */
+        .fire-graph-container {
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .fire-graph-months {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            width: 100%;
+            margin-left: 20px;
+            margin-bottom: 5px;
+            font-size: 10px;
+            color: #8b949e;
+        }
+        .fire-graph-body {
+            display: flex;
+            gap: 5px;
+        }
+        .fire-graph-days {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #8b949e;
+            padding-top: 15px;
+            height: 100px; /* Approximate grid height */
+        }
+        .fire-grid {
+            display: grid;
+            grid-template-rows: repeat(7, 1fr);
+            grid-auto-flow: column; /* Fill columns first (Mon-Sun) */
+            gap: 2px;
+        }
+        .heatmap-cell {
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+        /* Magma-like gradient */
+        .magma-l1 { background-color: #5c1e14; }
+        .magma-l2 { background-color: #9c2b1b; }
+        .magma-l3 { background-color: #d64018; }
+        .magma-l4 { background-color: #ff5722; box-shadow: 0 0 4px #ff5722; }
+
+
+        /* --- FOOTER PLAYER --- */
+        .footer {
+            background-color: #181818; border-top: 1px solid #282828;
+            padding: 0 16px; 
+            display: grid; grid-template-columns: 1fr 2fr 1fr;
+            align-items: center; 
+            z-index: 50;
+            
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 90px;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.presentation-mode .footer {
+            transform: translateY(100%); 
+        }
+        body.presentation-mode .app-container {
+            padding-bottom: 0; 
+        }
+
+        .now-playing { display: flex; align-items: center; gap: 14px; }
+        .album-thumb-sm { width: 56px; height: 56px; background-color: #282828; border-radius: 4px; overflow: hidden; position: relative; }
+        .album-thumb-sm img { width: 100%; height: 100%; object-fit: cover; }
+        .track-info { display: flex; flex-direction: column; justify-content: center; }
+        .track-name { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px; cursor: pointer; }
+        .track-name:hover { text-decoration: underline; }
+        .artist-name { font-size: 11px; color: #b3b3b3; cursor: pointer; }
+        .artist-name:hover { text-decoration: underline; color: #fff; }
+
+        .player-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .control-buttons { display: flex; align-items: center; gap: 20px; color: #b3b3b3; font-size: 16px; }
+        .control-buttons i { cursor: pointer; transition: color 0.2s; }
+        .control-buttons i:hover { color: #fff; }
+        
+        .play-pause {
+            width: 32px; height: 32px; background-color: #fff; border-radius: 50%;
+            color: #000; display: grid; place-items: center; font-size: 14px; cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        .play-pause:hover { transform: scale(1.05); }
+        .play-pause.playing { transform: scale(0.90) translateY(1px); background-color: #e0e0e0; }
+
+        .progress-bar-area { display: flex; align-items: center; gap: 8px; width: 100%; max-width: 600px; font-size: 11px; color: #b3b3b3; font-family: monospace; }
+        .progress-bar-bg {
+            flex-grow: 1; height: 4px; background-color: #4d4d4d; border-radius: 2px;
+            position: relative; cursor: pointer;
+        }
+        .progress-fill { height: 100%; background-color: #fff; border-radius: 2px; width: 0%; transition: width 0.3s linear; }
+        .progress-bar-bg:hover .progress-fill { background-color: #1DB954; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #888; }
+        
+        .pill { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+        
+        /* Scatter Plot Styles */
+        .scatter-point {
+            transition: all 0.4s ease-out;
+            transform-origin: center;
+        }
+        .scatter-point:hover {
+            r: 6;
+            fill: #fff;
+            filter: drop-shadow(0 0 5px #1DB954);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo" onclick="goToSlide(0); event.stopPropagation();">
+                <i class="fab fa-spotify" style="font-size: 28px;"></i> 
+                Spotify<span style="font-weight:300; font-size:16px; margin-left:2px; vertical-align: top; position: relative; top: -2px;">ML</span>
+            </div>
+            <div class="nav-links">
+                <div class="nav-item active" id="nav-home" onclick="resetSearch(); event.stopPropagation();"><i class="fas fa-home"></i> Home</div>
+                <div class="nav-item" id="nav-search" onclick="toggleSearch(); event.stopPropagation();"><i class="fas fa-search"></i> Search</div>
+                <div class="nav-item" onclick="window.open('https://github.com/Garvita260605/Song-recommendation-System-spotify-2024/blob/main/Machine%20Learning%20Project%20(1).ipynb', '_blank'); event.stopPropagation()"><i class="fas fa-book"></i> Your Library</div>
+            </div>
+
+            <!-- Search Input Container -->
+            <div id="search-wrapper">
+                <div style="background: #282828; border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; margin: 0 4px;">
+                    <i class="fas fa-search" style="color: #b3b3b3; font-size: 12px;"></i>
+                    <input type="text" id="search-input" placeholder="Search projects..." 
+                           style="background: transparent; border: none; color: #fff; width: 100%; outline: none; font-size: 12px; font-family: inherit;"
+                           onclick="event.stopPropagation()">
+                </div>
+            </div>
+
+            <div class="library-section" id="playlist-container">
+                <div class="lib-header"><span>Project 2025</span><i class="fas fa-plus"></i></div>
+                <!-- Playlist Items Generated by JS -->
+            </div>
+        </div>
+
+        <!-- Main Content with Tap-to-Change -->
+        <div class="main-view" id="main-view" onclick="nextSlide()">
+            <div class="top-bar" onclick="event.stopPropagation()">
+                <div class="nav-arrows">
+                    <div class="arrow-circle" onclick="prevSlide()"><i class="fas fa-chevron-left"></i></div>
+                    <div class="arrow-circle" onclick="nextSlide()"><i class="fas fa-chevron-right"></i></div>
+                </div>
+                <div class="user-pill"><i class="fas fa-user-circle"></i> Garvita G.</div>
+            </div>
+
+            <div id="slides-container">
+                <!-- Slides will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Player -->
+    <div class="footer">
+        <div class="now-playing">
+            <div class="album-thumb-sm">
+                <img id="footer-img" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=100&q=80">
+            </div>
+            <div class="track-info">
+                <div class="track-name" id="footer-title">Intro</div>
+                <div class="artist-name" id="footer-artist">Project Overview</div>
+            </div>
+            <i class="far fa-heart" style="color:#1DB954; font-size:14px; margin-left:12px; cursor:pointer;"></i>
+        </div>
+        <div class="player-controls">
+            <div class="control-buttons">
+                <i class="fas fa-random" style="font-size:14px;"></i>
+                <i class="fas fa-step-backward" onclick="prevSlide()"></i>
+                <div class="play-pause" onclick="togglePlay()"><i class="fas fa-play" id="play-icon"></i></div>
+                <i class="fas fa-step-forward" onclick="nextSlide()"></i>
+                <i class="fas fa-redo" style="font-size:14px;"></i>
+            </div>
+            <div class="progress-bar-area">
+                <span id="current-time">0:00</span>
+                <div class="progress-bar-bg" onclick="scrub(event)">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span id="total-time">0:14</span>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; color:#b3b3b3; gap:12px; font-size:14px;">
+            <i class="fas fa-microphone" title="Lyrics"></i>
+            <i class="fas fa-list" title="Queue"></i>
+            <i class="fas fa-volume-up"></i>
+            <div style="width:80px; height:4px; background:#4d4d4d; border-radius:2px; align-self:center;"><div style="width:70%; height:100%; background:#b3b3b3;"></div></div>
+        </div>
+    </div>
+
+    <!-- DATA & LOGIC -->
+    <script>
+        function toggleFlip(element) {
+            event.stopPropagation();
+            element.classList.toggle('flipped');
+        }
+
+        // --- ANIMATED COUNTER LOGIC ---
+        function animateCounters() {
+            const counters = document.querySelectorAll('.count-up');
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                const duration = 2000;
+                const increment = target / (duration / 16);
+                
+                let current = 0;
+                const updateCount = () => {
+                    current += increment;
+                    if (current < target) {
+                        counter.innerText = Math.ceil(current);
+                        requestAnimationFrame(updateCount);
+                    } else {
+                        counter.innerText = target;
+                    }
+                };
+                updateCount();
+            });
+        }
+        
+        // --- ANIMATED BAR CHART LOGIC ---
+        function animateChart() {
+            setTimeout(() => {
+                const bars = document.querySelectorAll('.bar-animate');
+                bars.forEach(bar => {
+                    const targetHeight = bar.getAttribute('data-height');
+                    bar.style.height = targetHeight;
+                });
+            }, 100);
+        }
+
+        // --- GENERATE SCATTER PLOT SVG ---
+        function generateScatterPlot() {
+            const width = 450;
+            const height = 300; // Visual height
+            const maxVal = 550; // Axis max value
+            const scaleX = width / maxVal;
+            const scaleY = height / maxVal;
+
+            let circles = '';
+            const points = [];
+
+            // 1. Main Cluster (0-250 X) - Dense
+            for (let i = 0; i < 60; i++) {
+                const valX = Math.random() * 250;
+                let valY = valX + (Math.random() * 60 - 30);
+                if (valY > 280) valY = 270 - Math.random() * 20; // Cap at 280
+                if (valY < 0) valY = 0;
+                points.push({x: valX, y: valY});
+            }
+
+            // 2. "2-4 dots from 250-350 on x axis" -> Exactly 3
+            for (let i = 0; i < 3; i++) {
+                const valX = 250 + Math.random() * 100; // 250-350
+                const valY = 200 + Math.random() * 70; // 200-270 (below 280)
+                points.push({x: valX, y: valY});
+            }
+
+            // 3. "1 dot 400-500"
+            points.push({x: 450, y: 240});
+
+            // 4. "1 is 500 plus"
+            points.push({x: 530, y: 260});
+
+            // Generate SVG Circles
+            points.forEach((p, i) => {
+                const cx = p.x * scaleX;
+                const cy = height - (p.y * scaleY); // Invert Y for SVG
+                const opacity = 0.6 + Math.random() * 0.4;
+                circles += `<circle cx="${cx}" cy="${cy}" r="0" class="scatter-point" fill="#1DB954" opacity="${opacity}">
+                                <animate attributeName="r" from="0" to="5" dur="0.6s" begin="${i * 0.01}s" fill="freeze" />
+                            </circle>`;
+            });
+
+            // Axis Ticks
+            let axisTicks = '';
+            const ticks = [0, 100, 200, 300, 400, 500];
+            ticks.forEach(t => {
+                // Y-Axis labels
+                const yPos = height - (t * scaleY);
+                if (t > 0) { // Skip 0 to avoid clutter
+                     axisTicks += `<text x="-10" y="${yPos + 4}" fill="#888" font-size="10" text-anchor="end" font-family="monospace">${t}</text>`;
+                     axisTicks += `<line x1="0" y1="${yPos}" x2="5" y2="${yPos}" stroke="#888" stroke-width="1"/>`;
+                }
+
+                // X-Axis labels
+                const xPos = t * scaleX;
+                if (t > 0) {
+                    axisTicks += `<text x="${xPos}" y="${height + 15}" fill="#888" font-size="10" text-anchor="middle" font-family="monospace">${t}</text>`;
+                    axisTicks += `<line x1="${xPos}" y1="${height}" x2="${xPos}" y2="${height-5}" stroke="#888" stroke-width="1"/>`;
+                }
+            });
+
+            // Ideal line (y=x)
+            const x2 = maxVal * scaleX;
+            const y2 = height - (maxVal * scaleY);
+            const line = `<line x1="0" y1="${height}" x2="${x2}" y2="${y2}" stroke="#fff" stroke-width="1" stroke-dasharray="4,4" opacity="0.3" />`;
+
+            return `
+                <svg viewBox="-40 -20 ${width + 80} ${height + 60}" width="100%" height="100%" style="overflow: visible;">
+                    <!-- Axes Lines -->
+                    <line x1="0" y1="${height}" x2="${width}" y2="${height}" stroke="#888" stroke-width="1" />
+                    <line x1="0" y1="${height}" x2="0" y2="0" stroke="#888" stroke-width="1" />
+                    
+                    <!-- Axis Labels -->
+                    <text x="${width/2}" y="${height + 35}" fill="#b3b3b3" font-size="12" text-anchor="middle" font-family="Montserrat" font-weight="700">Actual Score</text>
+                    <text x="-35" y="${height/2}" fill="#b3b3b3" font-size="12" text-anchor="middle" transform="rotate(-90 -35 ${height/2})" font-family="Montserrat" font-weight="700">Predicted Score</text>
+                    
+                    ${axisTicks}
+                    ${line}
+                    ${circles}
+                </svg>
+            `;
+        }
+        
+        // --- GENERATE MAGMA HEATMAP ---
+        function generateMagmaHeatmap() {
+            const totalSquares = 364; 
+            let html = '';
+            for(let i=0; i<totalSquares; i++) {
+                const rand = Math.random();
+                let level = 'heatmap-cell'; 
+                if (rand > 0.92) level += ' magma-l4'; 
+                else if (rand > 0.80) level += ' magma-l3'; 
+                else if (rand > 0.60) level += ' magma-l2'; 
+                else if (rand > 0.35) level += ' magma-l1'; 
+                html += `<div class="${level}"></div>`;
+            }
+            return html;
+        }
+
+        // SLIDE DATA
+        const slides = [
+            {
+                title: "Spotify Analytics",
+                artist: "Garvita Goswami",
+                duration: "0:01",
+                gradient: "linear-gradient(180deg, #535353 0%, #121212 100%)",
+                content: `
+                    <div style="position:absolute; right:-50px; bottom:-100px; opacity:0.1; width:500px; height:500px; z-index:0; pointer-events:none; transform: rotate(-15deg);">
+                        <svg viewBox="0 0 168 168" width="100%" height="100%" style="fill: #ffffff;">
+                            <path d="M83.7 0C37.5 0 0 37.5 0 83.7c0 46.3 37.5 83.7 83.7 83.7 46.3 0 83.7-37.5 83.7-83.7S130 0 83.7 0zM122 120.8c-1.4 2.5-4.6 3.2-7.1 1.7-19.8-12.1-44.8-14.9-74.2-8.1-2.8.6-5.6-1.1-6.2-4-.6-2.8 1.1-5.6 4-6.2 32-7.4 59.6-4.2 81.9 9.3 2.5 1.5 3.4 4.7 1.6 7.3zm10.1-22.5c-1.8 3-5.7 4.1-8.7 2.3-22.9-14-57.8-18.1-84.9-9.9-3.3 1-6.9-.8-7.9-4.1-1-3.3.8-6.9 4.1-7.9 30.6-9.3 69.3-4.7 95.1 11.2 3 1.7 4 5.6 2.3 8.4zm.8-23.2c-27.4-16.3-72.6-17.8-98.8-9.8-4.2 1.3-8.7-1.1-9.9-5.3-1.3-4.2 1.1-8.7 5.3-9.9 30.2-9.2 79.9-7.3 111.3 11.3 3.8 2.3 5 7.1 2.8 10.9-2.3 3.7-7.2 4.9-10.7 2.8z"/>
+                        </svg>
+                    </div>
+
+                    <div class="hero-layout">
+                        <div class="flip-card" onclick="toggleFlip(this)" style="width: 220px; height: 220px; animation: float-logo 4s ease-in-out infinite;">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front" style="background: linear-gradient(135deg, #1DB954 0%, #191414 100%); border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
+                                    <svg viewBox="0 0 168 168" width="60%" height="60%" style="fill: #ffffff; opacity: 0.9;">
+                                        <path d="M83.7 0C37.5 0 0 37.5 0 83.7c0 46.3 37.5 83.7 83.7 83.7 46.3 0 83.7-37.5 83.7-83.7S130 0 83.7 0zM122 120.8c-1.4 2.5-4.6 3.2-7.1 1.7-19.8-12.1-44.8-14.9-74.2-8.1-2.8.6-5.6-1.1-6.2-4-.6-2.8 1.1-5.6 4-6.2 32-7.4 59.6-4.2 81.9 9.3 2.5 1.5 3.4 4.7 1.6 7.3zm10.1-22.5c-1.8 3-5.7 4.1-8.7 2.3-22.9-14-57.8-18.1-84.9-9.9-3.3 1-6.9-.8-7.9-4.1-1-3.3.8-6.9 4.1-7.9 30.6-9.3 69.3-4.7 95.1 11.2 3 1.7 4 5.6 2.3 8.4zm.8-23.2c-27.4-16.3-72.6-17.8-98.8-9.8-4.2 1.3-8.7-1.1-9.9-5.3-1.3-4.2 1.1-8.7 5.3-9.9 30.2-9.2 79.9-7.3 111.3 11.3 3.8 2.3 5 7.1 2.8 10.9-2.3 3.7-7.2 4.9-10.7 2.8z"/>
+                                    </svg>
+                                </div>
+                                <div class="flip-card-back" style="background: #121212; border: 2px solid #1DB954; color: #fff;">
+                                    <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #b3b3b3; margin-bottom: 8px;">Created By</div>
+                                    <h2 style="font-size: 28px; font-weight: 800; color: #1DB954; margin: 0; line-height: 1.2;">Garvita<br>Goswami</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hero-text">
+                            <div class="kicker">Public Project</div>
+                            <h1 style="font-size: 64px; line-height: 1.1; margin-bottom: 16px;">Spotify<br>Analytics</h1>
+                            <div class="meta" style="font-weight: 400; color: #b3b3b3; display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                                <span style="font-weight: 700; color: #fff;">Machine Learning</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 24px 0; position:relative; z-index:10;">
+                        <div style="display:flex; align-items:center; gap:32px; margin-bottom:32px;">
+                            <div class="hero-play-btn" onclick="togglePlay(); event.stopPropagation();">
+                                <i class="fas fa-play" id="hero-play-icon" style="margin-left:4px;"></i>
+                            </div>
+                            <i class="far fa-heart" style="font-size:32px; color:#b3b3b3;"></i>
+                            <i class="fas fa-ellipsis-h" style="font-size:24px; color:#b3b3b3;"></i>
+                        </div>
+                        <h3 style="margin-bottom:16px;">About</h3>
+                        <p style="color:#b3b3b3; max-width:800px; line-height:1.6;">
+                            A machine learning system designed to predict track performance scores and recommend similar songs using content-based filtering on Spotify's audio feature dataset.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                title: "Problem & Aim",
+                artist: "Definition",
+                duration: "0:02",
+                gradient: "linear-gradient(180deg, #7f1d1d 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#7f1d1d; display:grid; place-items:center; font-size:64px;"><i class="fas fa-exclamation-circle text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Problem Statement</div>
+                            <h1>The Challenge</h1>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div class="card">
+                            <h3>Problem</h3>
+                            <ul style="color:#b3b3b3; line-height:2;">
+                                <li>Spotify has <strong>millions</strong> of tracks.</li>
+                                <li>Manual curation is impossible at scale.</li>
+                            </ul>
+                        </div>
+                        <div class="card">
+                            <h3>Project Aim</h3>
+                            <ul style="color:#b3b3b3; line-height:2;">
+                                <li style="color:#fff;"><i class="fas fa-check text-green-500 mr-2"></i> Predict Track Score</li>
+                                <li style="color:#fff;"><i class="fas fa-check text-green-500 mr-2"></i> Build Recommender System</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Objectives",
+                artist: "Scope",
+                duration: "0:03",
+                gradient: "linear-gradient(180deg, #1e3a8a 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#1e3a8a;"><i class="fas fa-bullseye text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Goals</div>
+                            <h1>Objectives & Scope</h1>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-top:24px;">
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:12px 0; color:#b3b3b3;">
+                            <span>1. Exploratory Data Analysis (EDA)</span>
+                            <span class="pill">Visuals</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:12px 0; color:#b3b3b3;">
+                            <span>2. Data Preprocessing (Cleaning)</span>
+                            <span class="pill">Pandas</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:12px 0; color:#b3b3b3;">
+                            <span>3. Predictive Modeling (Regression)</span>
+                            <span class="pill">Sklearn</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:12px 0; color:#b3b3b3;">
+                            <span>4. Content-Based Recommender</span>
+                            <span class="pill">Cosine Sim</span>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Dataset",
+                artist: "Data Source",
+                duration: "0:04",
+                gradient: "linear-gradient(180deg, #134e4a 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#134e4a;"><i class="fas fa-database text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Source</div>
+                            <h1>Dataset Overview</h1>
+                            <div class="meta">Spotify_Final.xlsx</div>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div>
+                            <h3>Columns Included</h3>
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+                                <span class="pill">Track Name</span>
+                                <span class="pill">Artist</span>
+                                <span class="pill">Streams</span>
+                                <span class="pill">Release Date</span>
+                                <span class="pill">YouTube Views</span>
+                                <span class="pill">Playlist Reach</span>
+                                <span class="pill">Album Name</span>
+                                <span class="pill">Playlist Count</span>
+                                <span class="pill" style="background:#1DB954; color:#000;">Track Score (Target)</span>
+                            </div>
+                        </div>
+                        <div class="code-block">
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+data = pd.read_excel(<span class="string">"Spotify_Final.xlsx"</span>)
+print(data.shape)
+<span class="comment"># Output: (20594, 24)</span>
+data.info()
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Preprocessing",
+                artist: "Cleaning",
+                duration: "0:05",
+                gradient: "linear-gradient(180deg, #581c87 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#581c87;"><i class="fas fa-filter text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Engineering</div>
+                            <h1>Data Cleaning</h1>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div class="card">
+                            <h3>Key Steps</h3>
+                            <ol style="color:#b3b3b3; line-height:2;">
+                                <li>Remove commas from numeric strings (e.g., "1,000").</li>
+                                <li>Convert columns to numeric types.</li>
+                                <li>Fill missing values with Median.</li>
+                                <li>Convert Dates to Datetime objects.</li>
+                            </ol>
+                        </div>
+                        <div class="code-block">
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+data[col] = data[col].str.replace(<span class="string">","</span>, <span class="string">""</span>)
+data[col] = pd.to_numeric(data[col])
+
+<span class="comment"># 2. Impute Nulls</span>
+median_val = data[col].median()
+data[col].fillna(median_val, inplace=<span class="keyword">True</span>)
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 24px;">
+                        <div class="card" style="text-align: center;">
+                            <div style="font-size: 12px; color: #b3b3b3; margin-bottom: 8px;">MISSING VALUES FILLED</div>
+                            <div style="font-size: 36px; font-weight: 700; color: #1DB954;"><span class="count-up" data-target="1500">0</span>+</div>
+                        </div>
+                        <div class="card" style="text-align: center;">
+                            <div style="font-size: 12px; color: #b3b3b3; margin-bottom: 8px;">OUTLIERS REMOVED</div>
+                            <div style="font-size: 36px; font-weight: 700; color: #eab308;"><span class="count-up" data-target="342">0</span></div>
+                        </div>
+                        <div class="card" style="text-align: center;">
+                            <div style="font-size: 12px; color: #b3b3b3; margin-bottom: 8px;">DATA QUALITY</div>
+                            <div style="font-size: 36px; font-weight: 700; color: #fff;"><span class="count-up" data-target="100">0</span>%</div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "EDA",
+                artist: "Analysis",
+                duration: "0:06",
+                gradient: "linear-gradient(180deg, #be185d 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#be185d;"><i class="fas fa-chart-bar text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Insights</div>
+                            <h1>Exploratory Analysis</h1>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top:24px; display:flex; flex-direction:column; justify-content:space-between; height:400px; position:relative;">
+                        <h3 style="color:#fff; margin-bottom:10px; padding-left:20px;">Top Artists by Streams (Billions)</h3>
+                        
+                        <div style="flex-grow:1; display:flex; align-items:flex-end; justify-content:space-around; padding-top:40px; padding-bottom:10px; padding-left: 20px; padding-right: 20px;">
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:12%; height:100%; justify-content:flex-end;">
+                                <div class="bar-animate" style="height:0%; width:100%; background:#1DB954; border-radius:6px 6px 0 0; position:relative; box-shadow: 0 0 20px rgba(29,185,84,0.5); transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1);" data-height="100%">
+                                    <span style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); color:#1DB954; font-weight:bold; font-size:16px;">80B</span>
+                                </div>
+                                <span style="font-size:12px; color:#fff; font-weight:bold; text-transform: uppercase; letter-spacing: 1px;">Drake</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:12%; height:100%; justify-content:flex-end;">
+                                <div class="bar-animate" style="height:0%; width:100%; background:#333; border-radius:6px 6px 0 0; position:relative; transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: 0.1s;" data-height="85%" onmouseover="this.style.background='#b3b3b3'" onmouseout="this.style.background='#333'">
+                                    <span style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); color:#b3b3b3; font-size:14px;">68B</span>
+                                </div>
+                                <span style="font-size:12px; color:#b3b3b3;">Bad Bunny</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:12%; height:100%; justify-content:flex-end;">
+                                <div class="bar-animate" style="height:0%; width:100%; background:#333; border-radius:6px 6px 0 0; position:relative; transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: 0.2s;" data-height="90%" onmouseover="this.style.background='#b3b3b3'" onmouseout="this.style.background='#333'">
+                                    <span style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); color:#b3b3b3; font-size:14px;">72B</span>
+                                </div>
+                                <span style="font-size:12px; color:#b3b3b3;">Taylor Swift</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:12%; height:100%; justify-content:flex-end;">
+                                <div class="bar-animate" style="height:0%; width:100%; background:#333; border-radius:6px 6px 0 0; position:relative; transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: 0.3s;" data-height="70%" onmouseover="this.style.background='#b3b3b3'" onmouseout="this.style.background='#333'">
+                                    <span style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); color:#b3b3b3; font-size:14px;">55B</span>
+                                </div>
+                                <span style="font-size:12px; color:#b3b3b3;">The Weeknd</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:12%; height:100%; justify-content:flex-end;">
+                                <div class="bar-animate" style="height:0%; width:100%; background:#333; border-radius:6px 6px 0 0; position:relative; transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1); transition-delay: 0.4s;" data-height="60%" onmouseover="this.style.background='#b3b3b3'" onmouseout="this.style.background='#333'">
+                                    <span style="position:absolute; top:-30px; left:50%; transform:translateX(-50%); color:#b3b3b3; font-size:14px;">48B</span>
+                                </div>
+                                <span style="font-size:12px; color:#b3b3b3;">Ed Sheeran</span>
+                            </div>
+                        </div>
+                        <div style="width:100%; height:2px; background:#444;"></div>
+                    </div>
+                `
+            },
+            {
+                title: "Model Setup",
+                artist: "Preparation",
+                duration: "0:07",
+                gradient: "linear-gradient(180deg, #374151 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#374151;"><i class="fas fa-cogs text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Training</div>
+                            <h1>Model Setup</h1>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div>
+                            <h3>Features (X) vs Target (y)</h3>
+                            <ul style="color:#b3b3b3; line-height:2;">
+                                <li><strong>Target:</strong> Track Score</li>
+                                <li><strong>Features:</strong> All numeric columns (Streams, Views, Audio Features)</li>
+                                <li><strong>Split:</strong> 80% Train, 20% Test</li>
+                            </ul
+                            >
+                        </div>
+                        <div class="code-block">
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+
+X = data[numeric_features]
+y = data[<span class="string">"Track Score"</span>]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Regression",
+                artist: "Model 1",
+                duration: "0:08",
+                gradient: "linear-gradient(180deg, #15803d 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#15803d;"><i class="fas fa-calculator text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Algorithm</div>
+                            <h1>Linear Regression</h1>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div class="card">
+                            <h3 style="color:#fff; margin-bottom:16px;">Formula</h3>
+                            <div style="font-size: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center; margin-bottom: 20px;">
+                                $$ y = \\beta_0 + \\beta_1 x_1 + \\beta_2 x_2 + \\dots + \\beta_n x_n $$
+                            </div>
+                            <p style="margin-top:16px; color:#b3b3b3;">
+                                A simple, interpretable model to establish a baseline for predicting continuous variables like <strong style="color:#fff;">Track Score</strong> based on features like Streams and Views.
+                            </p>
+                        </div>
+                        <div class="code-block">
+<span class="keyword">from</span> sklearn.linear_model <span class="keyword">import</span> LinearRegression
+
+<span class="comment"># Initialize & Train</span>
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+<span class="comment"># Predict</span>
+preds = model.predict(X_test)
+                        </div>
+                    </div>
+                `
+            },
+            // Slide 9: Prediction Analysis (With SCATTER CHART)
+            {
+                title: "Prediction Analysis",
+                artist: "Visual Evaluation",
+                duration: "0:09",
+                gradient: "linear-gradient(180deg, #4c72b0 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#4c72b0;"><i class="fas fa-chart-line text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Visual Evaluation</div>
+                            <h1>Actual vs Predicted</h1>
+                        </div>
+                    </div>
+                    
+                    <div class="two-col">
+                        <!-- Scatter Plot Container -->
+                        <div class="card" style="padding: 10px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.02);">
+                            ${generateScatterPlot()}
+                        </div>
+
+                        <!-- Analysis Text -->
+                        <div class="card">
+                            <h3 style="color:#fff; margin-bottom:16px;">Model Performance Insights</h3>
+                            <ul style="color:#b3b3b3; line-height:1.8; font-size:14px; padding-left:20px;">
+                                <li style="margin-bottom:16px;">
+                                    <strong style="color:#fff;">Strong Correlation (0-300 Score):</strong> 
+                                    The model predicts average-performing tracks with high accuracy, clustering tightly around the dotted <span style="color:#fff;">Ideal Fit</span> line.
+                                </li>
+                                <li style="margin-bottom:16px;">
+                                    <strong style="color:#fff;">Under-prediction of Viral Hits:</strong> 
+                                    For outliers with scores > 400 (Viral Hits), the model consistently predicts lower values (scatter below the line).
+                                </li>
+                                <li>
+                                    <strong style="color:#fff;">Conclusion:</strong> 
+                                    Linear models struggle to capture the exponential nature of viral streaming growth.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Evaluation",
+                artist: "Metrics",
+                duration: "0:10",
+                gradient: "linear-gradient(180deg, #b45309 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#b45309;"><i class="fas fa-ruler-combined text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Performance</div>
+                            <h1>Model Evaluation</h1>
+                        </div>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-top:24px;">
+                        <div class="flip-card" onclick="toggleFlip(this)">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <div style="font-size:12px; color:#b3b3b3; margin-bottom:8px;">R² SCORE</div>
+                                    <div style="font-size:48px; font-weight:700;">0.67</div>
+                                    <div style="font-size:12px; color:#1DB954; margin-top:8px;">Variance Explained</div>
+                                    <div style="font-size:10px; color:#666; margin-top:20px;">(Tap to view formula)</div>
+                                </div>
+                                <div class="flip-card-back">
+                                    <div style="font-size:14px; font-weight:700; margin-bottom:15px; color:#000;">R-Squared Formula</div>
+                                    <div style="font-size:18px;">
+                                        $$ R^2 = 1 - \\frac{SS_{res}}{SS_{tot}} $$
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flip-card" onclick="toggleFlip(this)">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <div style="font-size:12px; color:#b3b3b3; margin-bottom:8px;">MAE</div>
+                                    <div style="font-size:48px; font-weight:700;">20.7</div>
+                                    <div style="font-size:12px; color:#eab308; margin-top:8px;">Avg Error</div>
+                                    <div style="font-size:10px; color:#666; margin-top:20px;">(Tap to view formula)</div>
+                                </div>
+                                <div class="flip-card-back">
+                                    <div style="font-size:14px; font-weight:700; margin-bottom:15px; color:#000;">Mean Absolute Error</div>
+                                    <div style="font-size:18px;">
+                                        $$ \\frac{1}{n}\\sum |y_i - \\hat{y}_i| $$
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flip-card" onclick="toggleFlip(this)">
+                            <div class="flip-card-inner">
+                                <div class="flip-card-front">
+                                    <div style="font-size:12px; color:#b3b3b3; margin-bottom:8px;">RMSE</div>
+                                    <div style="font-size:48px; font-weight:700;">36.1</div>
+                                    <div style="font-size:12px; color:#ef4444; margin-top:8px;">Penalizes Outliers</div>
+                                    <div style="font-size:10px; color:#666; margin-top:20px;">(Tap to view formula)</div>
+                                </div>
+                                <div class="flip-card-back">
+                                    <div style="font-size:14px; font-weight:700; margin-bottom:15px; color:#000;">Root Mean Squared Error</div>
+                                    <div style="font-size:16px;">
+                                        $$ \\sqrt{\\frac{1}{n}\\sum (y_i - \\hat{y}_i)^2} $$
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Recommender",
+                artist: "Concept",
+                duration: "0:11",
+                gradient: "linear-gradient(180deg, #4000F4 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#4000F4;"><i class="fas fa-project-diagram text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Model 2</div>
+                            <h1>Recommendation System</h1>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div class="card">
+                            <h3><i class="fas fa-filter" style="color:#4000F4; margin-right:8px;"></i> Content-Based</h3>
+                            <p style="color:#b3b3b3; margin-top:16px; line-height:1.6;">
+                                A strategy that recommends items similar to those a user liked in the past. It relies on item attributes (Audio Features) rather than community interactions.
+                            </p>
+                        </div>
+                        <div class="card">
+                            <h3><i class="fas fa-calculator" style="color:#4000F4; margin-right:8px;"></i> Cosine Similarity: The Logic</h3>
+                            
+                            <p style="color:#b3b3b3; margin-top:16px; line-height:1.6; font-weight:600;">
+                                
+                                This metric calculates the *angle* between two songs' feature vectors (e.g., Danceability, Energy).
+                            </p>
+                            <ul style="color:#b3b3b3; margin-top:16px; line-height:1.8; font-size:14px; padding-left:20px;">
+                                <li>A small angle ($\approx 0^\circ$) means high similarity (Score $\approx 1.0$).</li>
+                                <li>A large angle ($\approx 90^\circ$) means low similarity (Score $\approx 0.0$).</li>
+                                <li>The formula ignores the songs' loudness or overall popularity, focusing strictly on **feature profile**.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "Demo Code",
+                artist: "Implementation",
+                duration: "0:12",
+                gradient: "linear-gradient(180deg, #0f172a 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#0f172a;"><i class="fas fa-code text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Function</div>
+                            <h1>Recommendation Code</h1>
+                        </div>
+                    </div>
+                    <div class="code-block" style="font-size:14px;">
+<span class="keyword">def</span> <span class="keyword">recommend_songs</span>(song_name, top_n=5):
+    <span class="comment"># 1. Find song index</span>
+    idx = data[data[<span class="string">'Track'</span>] == song_name].index[0]
+    
+    <span class="comment"># 2. Get similarity scores</span>
+    scores = similarity_matrix[idx]
+    
+    <span class="comment"># 3. Sort and get top N</span>
+    top_indices = scores.argsort()[::-1][1:top_n+1]
+    
+    <span class="keyword">return</span> data.iloc[top_indices][[<span class="string">'Track'</span>, <span class="string">'Artist'</span>]]
+                    </div>
+                `
+            },
+            {
+                title: "Live Demo",
+                artist: "Execution",
+                duration: "0:13",
+                gradient: "linear-gradient(180deg, #0f172a 0%, #121212 100%)",
+                content: `
+                    <div class="hero-layout">
+                        <div class="hero-img" style="background:#0f172a;"><i class="fas fa-terminal text-white"></i></div>
+                        <div class="hero-text">
+                            <div class="kicker">Live Demo</div>
+                            <h1>Model Execution</h1>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top:24px; padding:0; overflow:hidden; border:1px solid #333;">
+                        
+                        <!-- Jupyter-style Input Cell -->
+                        <div style="background:#1e1e1e; padding:16px; border-bottom:1px solid #333;">
+                            <div style="font-family:monospace; color:#888; margin-bottom:8px; font-size:12px;">In [1]:</div>
+                            <div class="code-block" style="background:transparent; padding:0; border:none;">
+<span class="keyword">sample_song</span> = <span class="string">"Blinding Lights"</span>
+<span class="keyword">print</span>(<span class="string">f"Selected: {sample_song}"</span>)
+
+recommendations = recommend_songs(sample_song)
+<span class="keyword">print</span>(<span class="string">"Recommended Songs:"</span>)
+<span class="keyword">print</span>(recommendations)
+                            </div>
+                        </div>
+
+                        <!-- Jupyter-style Output Cell -->
+                        <div style="background:#000; padding:16px; font-family:'Courier New', monospace; font-size:13px; color:#d4d4d4;">
+                            <div style="color:#888; margin-bottom:8px; font-size:12px;">Out [1]:</div>
+                            <div style="white-space: pre-wrap;">Selected: Blinding Lights
+Recommended Songs:
+       Track                Artist           Similarity
+0  Save Your Tears      The Weeknd       0.98
+1  Midnight City        M83              0.95
+2  As It Was            Harry Styles     0.92
+3  Stay                 The Kid LAROI    0.89
+4  Levitating           Dua Lipa         0.87</div>
+                        </div>
+
+                    </div>
+                `
+            },
+            {
+                title: "Conclusion",
+                artist: "The End",
+                duration: "0:14",
+                gradient: "linear-gradient(180deg, #503e2c 0%, #121212 100%)",
+                content: `
+                    <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding-bottom:80px;">
+                        <div style="width:80px; height:80px; background:#1DB954; border-radius:50%; display:grid; place-items:center; margin-bottom:24px; box-shadow:0 0 20px rgba(29,185,84,0.4);">
+                            <i class="fas fa-check text-black" style="font-size:32px;"></i>
+                        </div>
+                        <h1 style="font-size:56px; margin-bottom:16px;">Thank You!</h1>
+                        <p style="color:#b3b3b3; max-width:600px; text-align:center; font-size:18px;">
+                            The project successfully demonstrates how basic Audio Features can drive both Performance Prediction and Discovery.
+                        </p>
+                        <div style="display:flex; gap:16px; margin-top:32px;">
+                            <button style="background:transparent; border:1px solid #727272; color:#fff; padding:12px 32px; border-radius:32px; font-weight:700; cursor:pointer;" onclick="window.open('https://github.com/Garvita260605/Song-recommendation-System-spotify-2024/', '_blank'); event.stopPropagation()">GITHUB REPO</button>
+                            <button style="background:#fff; border:none; color:#000; padding:12px 32px; border-radius:32px; font-weight:700; cursor:pointer;" onclick="window.open('https://github.com/Garvita260605/Song-recommendation-System-spotify-2024', '_blank'); event.stopPropagation()">DOCUMENTATION</button>
+                        </div>
+                    </div>
+                `
+            }
+        ];
+
+        // APP LOGIC
+        let currentSlideIndex = 0;
+        let isPlaying = false;
+        
+        function renderSidebar() {
+            const container = document.getElementById('playlist-container');
+            container.innerHTML = `<div class="lib-header"><span>Project 2025</span><i class="fas fa-plus"></i></div>`;
+            slides.forEach((slide, index) => {
+                const div = document.createElement('div');
+                div.className = `playlist-item ${index === currentSlideIndex ? 'active' : ''}`;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    goToSlide(index);
+                };
+                div.innerHTML = `
+                    <span>${index + 1}. ${slide.title}</span>
+                    <i class="fas fa-chart-bar playing-icon"></i>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleSearch() {
+            const wrapper = document.getElementById('search-wrapper');
+            const searchInput = document.getElementById('search-input');
+            const homeNav = document.getElementById('nav-home');
+            const searchNav = document.getElementById('nav-search');
+
+            if(wrapper.classList.contains('visible')) {
+                wrapper.classList.remove('visible');
+                searchNav.classList.remove('active');
+                homeNav.classList.add('active');
+                searchInput.value = "";
+                filterSlides(""); 
+            } else {
+                wrapper.classList.add('visible');
+                searchNav.classList.add('active');
+                homeNav.classList.remove('active');
+                setTimeout(() => searchInput.focus(), 300);
+            }
+        }
+
+        function resetSearch() {
+            const wrapper = document.getElementById('search-wrapper');
+            if(wrapper.classList.contains('visible')) {
+                toggleSearch();
+            }
+            goToSlide(0);
+        }
+
+        function filterSlides(query) {
+            const items = document.querySelectorAll('.playlist-item');
+            const lowerQuery = query.toLowerCase();
+            items.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(lowerQuery) ? "flex" : "none";
+            });
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            filterSlides(e.target.value);
+        });
+
+        function renderSlide() {
+            const slide = slides[currentSlideIndex];
+            const container = document.getElementById('slides-container');
+            
+            document.getElementById('main-view').style.background = slide.gradient;
+            container.innerHTML = `<div class="slide active">${slide.content}</div>`;
+            
+            document.getElementById('footer-title').innerText = slide.title;
+            document.getElementById('footer-artist').innerText = slide.artist;
+            document.getElementById('footer-img').src = getFooterImage(currentSlideIndex);
+            
+            if(currentSlideIndex === 0) {
+                const heroIcon = document.getElementById('hero-play-icon');
+                if(heroIcon) {
+                    heroIcon.className = 'fas fa-play'; 
+                    heroIcon.style.marginLeft = "4px";
+                }
+            }
+
+            // Trigger counting animation if on Preprocessing Slide (index 4)
+            if(currentSlideIndex === 4) {
+                animateCounters();
+            }
+            
+            // Trigger bar chart animation if on EDA Slide (index 5)
+            if(currentSlideIndex === 5) {
+                animateChart();
+            }
+
+            updateProgress();
+
+            const items = document.querySelectorAll('.playlist-item');
+            items.forEach((item, idx) => {
+                if(idx === currentSlideIndex) {
+                    item.classList.add('active');
+                    item.querySelector('.playing-icon').style.display = 'block';
+                } else {
+                    item.classList.remove('active');
+                    item.querySelector('.playing-icon').style.display = 'none';
+                }
+            });
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([document.getElementById('slides-container')]).catch((err) => console.log(err));
+            }
+        }
+
+        function getFooterImage(idx) {
+            const imgs = [
+                "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=100&q=80",
+                "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&w=100&q=80",
+                "https://images.unsplash.com/photo-1459749411177-8c2913574757?auto=format&fit=crop&w=100&q=80"
+            ];
+            return imgs[idx % imgs.length];
+        }
+
+        function goToSlide(index) {
+            if (index >= 0 && index < slides.length) {
+                currentSlideIndex = index;
+                renderSlide();
+                document.getElementById('main-view').scrollTop = 0;
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlideIndex < slides.length - 1) {
+                goToSlide(currentSlideIndex + 1);
+            } else {
+                goToSlide(0); 
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlideIndex > 0) {
+                goToSlide(currentSlideIndex - 1);
+            }
+        }
+
+        function togglePlay() {
+            const footerIcon = document.getElementById('play-icon');
+            const heroIcon = document.getElementById('hero-play-icon');
+            const footerBtn = document.querySelector('.play-pause');
+            const body = document.body;
+
+            if (isPlaying) {
+                footerIcon.className = 'fas fa-play';
+                footerBtn.classList.remove('playing');
+                body.classList.remove('presentation-mode'); 
+                isPlaying = false;
+            } else {
+                footerIcon.className = 'fas fa-pause';
+                footerBtn.classList.add('playing');
+                body.classList.add('presentation-mode'); 
+                isPlaying = true;
+            }
+        }
+
+        function updateProgress() {
+            const pct = ((currentSlideIndex + 1) / slides.length) * 100;
+            document.getElementById('progress-fill').style.width = `${pct}%`;
+            document.getElementById('current-time').innerText = slides[currentSlideIndex].duration;
+            document.getElementById('total-time').innerText = "0:14";
+        }
+
+        function scrub(e) {
+            nextSlide();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowRight") nextSlide();
+            if (e.key === "ArrowLeft") prevSlide();
+            if (e.code === "Space") {
+                e.preventDefault();
+                togglePlay();
+            }
+        });
+
+        renderSidebar();
+        renderSlide();
+
+    </script>
+</body>
+</html>
